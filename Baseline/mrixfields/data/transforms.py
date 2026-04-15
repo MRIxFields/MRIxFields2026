@@ -30,16 +30,22 @@ class CenterCropOrPad:
 
 
 class NormalizeMinMax:
-    """Normalize volume to [0, 1] range using min-max scaling."""
+    """Min-max normalize a volume to [0, 1], with optional percentile clipping.
 
-    def __init__(self, clip_percentile: Optional[float] = 99.5):
+    If `clip_percentile` is set (e.g. 99.5), values are first clipped to that
+    percentile then min-max rescaled. If `clip_percentile` is None (default),
+    the volume is returned as float32 unchanged.
+    """
+
+    def __init__(self, clip_percentile: Optional[float] = None):
         self.clip_percentile = clip_percentile
 
     def __call__(self, data: np.ndarray) -> np.ndarray:
         data = data.astype(np.float32)
-        if self.clip_percentile is not None:
-            upper = np.percentile(data, self.clip_percentile)
-            data = np.clip(data, 0, upper)
+        if self.clip_percentile is None:
+            return data
+        upper = np.percentile(data, self.clip_percentile)
+        data = np.clip(data, 0, upper)
         dmin, dmax = data.min(), data.max()
         if dmax - dmin > 1e-8:
             data = (data - dmin) / (dmax - dmin)

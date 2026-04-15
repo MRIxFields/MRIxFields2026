@@ -3,14 +3,18 @@
 Computes: nRMSE, SSIM, LPIPS, Dice (via SynthSeg), Volume Consistency.
 Matches prediction-target pairs by subject ID prefix.
 
+Task scope:
+    Task 1 / Task 2: 5 metrics (nrmse + ssim + lpips + dice + volume).
+    Task 3:         3 voxel-level metrics only (nrmse + ssim + lpips); no segmentations.
+
 Usage:
-    # Voxel-level metrics only
+    # Voxel-level metrics only (required path for Task 3)
     python Evaluation/evaluate.py \
         --pred_dir $INFERENCE_DIR/ \
         --target_dir $DATA_DIR/ground_truth/ \
         --metrics nrmse ssim lpips
 
-    # Full evaluation (requires pre-computed segmentations)
+    # Full evaluation (Task 1 / Task 2; requires pre-computed segmentations)
     python Evaluation/evaluate.py \
         --pred_dir $INFERENCE_DIR/ \
         --target_dir $DATA_DIR/ground_truth/ \
@@ -194,22 +198,10 @@ def find_seg_file(seg_dir, subject_id, suffix="_seg"):
     return None
 
 
-def _normalize_01(vol):
-    """Normalize volume to [0, 1] using 99.5th percentile clipping."""
-    vmax = float(np.percentile(vol, 99.5))
-    if vmax > 1e-8:
-        vol = np.clip(vol, 0, vmax) / vmax
-    return vol
-
-
 def evaluate_pair(pred_path, target_path, metrics, device="cuda",
                   pred_seg_path=None, target_seg_path=None):
     pred, _ = load_nifti(pred_path)
     target, _ = load_nifti(target_path)
-
-    # Pred is already [0,1] from inference (model output after *0.5+0.5)
-    # Only normalize target to [0,1] - consistent with training where GT is 99.5% normalized
-    target = _normalize_01(target)
 
     # All voxel-level metrics (nRMSE / SSIM / LPIPS) are computed on the full
     # volume without a brain mask, to keep evaluation scope consistent.

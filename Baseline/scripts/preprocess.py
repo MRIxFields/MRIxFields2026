@@ -1,8 +1,10 @@
 """Preprocessing script for MRIxFields2026 data.
 
 Two modes:
-    resample       — Resample + normalize full NIfTI volumes (nii.gz → nii.gz)
-    extract-slices — Extract 2D axial slices as npz for fast training
+    resample       — Resample full NIfTI volumes to isotropic spacing (nii.gz → nii.gz).
+                     Pass --normalize for optional per-volume p99.5 clip + min-max rescale.
+    extract-slices — Extract 2D axial slices as npz for fast training.
+                     Input volumes are in [0, 1]; slices are saved as float32.
 
 Slice naming: {split_abbr}_{modality}_{field}_{subject_id}_s{NNN}.npz
     e.g. retro_T1W_0.1T_R_0001_s128.npz
@@ -75,7 +77,7 @@ def run_resample(args):
         out_path = output_dir / rel_path
         image = sitk.ReadImage(str(nifti_path), sitk.sitkFloat32)
         image = resample_to_isotropic(image, tuple(args.spacing))
-        if not args.no_normalize:
+        if args.normalize:
             data = sitk.GetArrayFromImage(image)
             upper = np.percentile(data, 99.5)
             data = np.clip(data, 0, upper)
@@ -126,17 +128,14 @@ def extract_slices_from_volume(
     modality: str,
     field: str,
     output_dir: Path,
-    clip_percentile: float = 99.5,
     save_debug_png: bool = False,
 ) -> dict:
-    """Extract fixed axial slices from a 3D volume, save as npz."""
-    data, _ = load_nifti(nifti_path)  # (364, 436, 364) float32
+    """Extract fixed axial slices from a 3D volume, save as npz.
 
-    # Per-volume normalization to [0, 1]
-    upper = float(np.percentile(data, clip_percentile))
-    data = np.clip(data, 0, upper)
-    if upper > 1e-8:
-        data = data / upper
+    Input volumes are in [0, 1]; output slices are float32 in [0, 1].
+    """
+    data, _ = load_nifti(nifti_path)  # (364, 436, 364) float32
+    data = data.astype(np.float32)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     kept = 0
@@ -190,7 +189,6 @@ def extract_slices_from_volume(
         "source_file": nifti_path.name,
         "n_slices": kept,
         "shape": list(data.shape),
-        "intensity_upper": upper,
     }
 
 
@@ -288,7 +286,7 @@ def run_extract_slices(args):
         "output_dir": str(output_dir),
         "slice_range": [SLICE_START, SLICE_END],
         "n_slices_per_volume": SLICE_END - SLICE_START,
-        "clip_percentile": 99.5,
+        "normalization": "identity",
         "total_volumes": total_volumes,
         "total_slices": total_slices,
         "volumes": all_meta,
@@ -317,7 +315,8 @@ def main():
     p_resample.add_argument("--input_dir", type=str, required=True)
     p_resample.add_argument("--output_dir", type=str, required=True)
     p_resample.add_argument("--spacing", type=float, nargs=3, default=[1.0, 1.0, 1.0])
-    p_resample.add_argument("--no_normalize", action="store_true")
+    p_resample.add_argument("--normalize", action="store_true",
+                            help="Apply per-volume p99.5 clip + min-max normalize.")
 
     # --- extract-slices ---
     p_extract = subparsers.add_parser("extract-slices", help="Extract 2D axial slices as npz")

@@ -128,7 +128,7 @@ def predict_volume(
 ) -> np.ndarray:
     """Run inference on a full 3D volume, slice by slice.
 
-    Input volume is normalized to [0,1] then scaled to [-1,1] for the model.
+    Input volume is expected in [0,1]; scaled to [-1,1] for the model.
     Output is mapped back to [0,1] for saving.
 
     Args:
@@ -142,11 +142,7 @@ def predict_volume(
     original_shape = volume.shape
     n_slices = volume.shape[slice_axis]
 
-    # Normalize
-    vol_max = float(np.percentile(volume, 99.5))
-    vol_norm = np.clip(volume, 0, vol_max)
-    if vol_max > 1e-8:
-        vol_norm = vol_norm / vol_max
+    vol_norm = volume.astype(np.float32)
 
     output = np.zeros_like(volume)
 

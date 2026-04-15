@@ -46,7 +46,7 @@ Python scripts auto-load `.env` via `mrixfields.env.load_env()`. For shell comma
 
 ### Step 1: Preprocess
 
-Extract 2D axial slices (normalized to [0,1] for storage, scaled to [-1,1] during training):
+Extract 2D axial slices. Input volumes are in [0, 1]; preprocessing casts to float32 and slices. The training transform scales slices to [-1, 1] for tanh-output GANs.
 
 ```bash
 cd Baseline
@@ -98,15 +98,18 @@ python scripts/inference.py \
     --target_field 7T
 ```
 
-### Step 4: Segmentation (SynthSeg)
+### Step 4: Segmentation (SynthSeg) — Task 1 / Task 2 only
 
-Run SynthSeg segmentation on both your predictions and the ground truth target volumes. Participants must submit both generated images and SynthSeg segmentations. This step is required for Dice and Volume metrics.
+Run SynthSeg segmentation on both your predictions and the ground truth target volumes. This step is required for the Dice and Volume metrics, which apply to **Task 1 / Task 2 only**. **Skip this step entirely for Task 3** — Task 3 is evaluated on voxel-level metrics only and does not accept segmentation submissions.
 
 See [Evaluation/README.md](../Evaluation/README.md) for segmentation commands and SynthSeg setup.
 
 ### Step 5: Evaluation
 
-Evaluate your predictions against ground truth using five metrics: nRMSE, SSIM, LPIPS (voxel-level, no segmentation needed) and Dice, Volume (require Step 4 segmentations).
+Evaluate your predictions against ground truth:
+
+- **Task 1 / Task 2**: 5 metrics — nRMSE, SSIM, LPIPS (voxel-level) plus Dice, Volume (require Step 4 segmentations).
+- **Task 3**: 3 metrics — nRMSE, SSIM, LPIPS only (no segmentations).
 
 See [Evaluation/README.md](../Evaluation/README.md) for evaluation commands and metric details.
 

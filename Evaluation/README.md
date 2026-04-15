@@ -74,15 +74,15 @@ If the script errors with missing weights, double-check `SYNTHSEG_DIR` and that
 
 ## Segmentation
 
-Participants must submit **both** generated images and SynthSeg segmentations.
+SynthSeg segmentations are required only for **Task 1 / Task 2** (Dice / Volume metrics). **Task 3 is evaluated on voxel-level metrics only and does not require any segmentation step.**
 
 ```bash
-# Segment predictions
+# Task 1 / Task 2 only — segment predictions
 python Evaluation/segment.py \
     --input_dir $INFERENCE_DIR/ \
     --output_dir ${INFERENCE_DIR}_seg/
 
-# Segment ground truth (needed for Dice/Volume evaluation)
+# Task 1 / Task 2 only — segment ground truth (needed for Dice/Volume evaluation)
 # Example for Task 1 (target: 7T)
 python Evaluation/segment.py \
     --input_dir $DATA_DIR/Validating_prospective/T1W/7T/ \
@@ -92,14 +92,21 @@ python Evaluation/segment.py \
 ## Evaluation
 
 ```bash
-# Voxel-level metrics only (no segmentations needed)
-# Example for Task 1: 0.1T → 7T
+# Task 3 (voxel-level only) — required path for Task 3
+# Example: 0.1T -> 7T translation under task3/
 python Evaluation/evaluate.py \
     --pred_dir $INFERENCE_DIR/ \
     --target_dir $DATA_DIR/Validating_prospective/T1W/7T/ \
     --metrics nrmse ssim lpips
 
-# Full evaluation with all 5 metrics
+# Task 1 / Task 2 — voxel-level metrics only (skip Dice/Volume)
+# Example for Task 1: 0.1T -> 7T
+python Evaluation/evaluate.py \
+    --pred_dir $INFERENCE_DIR/ \
+    --target_dir $DATA_DIR/Validating_prospective/T1W/7T/ \
+    --metrics nrmse ssim lpips
+
+# Task 1 / Task 2 — full evaluation with all 5 metrics
 python Evaluation/evaluate.py \
     --pred_dir $INFERENCE_DIR/ \
     --target_dir $DATA_DIR/Validating_prospective/T1W/7T/ \
@@ -111,19 +118,19 @@ python Evaluation/evaluate.py \
 
 ## Metrics
 
-| # | Metric | Direction | Description |
-|---|--------|-----------|-------------|
-| 1 | **nRMSE** | Lower is better | Normalized Root Mean Square Error |
-| 2 | **SSIM** | Higher is better | Structural Similarity Index |
-| 3 | **LPIPS** | Lower is better | Learned Perceptual Image Patch Similarity (AlexNet) |
-| 4 | **Dice** | Higher is better | Overlap on 14 deep gray matter structures (via SynthSeg) |
-| 5 | **Volume** | Higher is better | Normalized volume consistency per DGM structure |
+| # | Metric | Direction | Applies to | Description |
+|---|--------|-----------|------------|-------------|
+| 1 | **nRMSE** | Lower is better | Task 1 / 2 / 3 | Normalized Root Mean Square Error |
+| 2 | **SSIM** | Higher is better | Task 1 / 2 / 3 | Structural Similarity Index |
+| 3 | **LPIPS** | Lower is better | Task 1 / 2 / 3 | Learned Perceptual Image Patch Similarity (AlexNet) |
+| 4 | **Dice** | Higher is better | Task 1 / 2 | Overlap on 14 deep gray matter structures (via SynthSeg) |
+| 5 | **Volume** | Higher is better | Task 1 / 2 | Normalized volume consistency per DGM structure |
 
-**Normalization**: Ground truth volumes are normalized to `[0, 1]` using 99.5 percentile clipping before evaluation, matching the GT normalization used during training. Predictions are assumed to already be in `[0, 1]` (typical model output after `tanh*0.5+0.5`). All voxel-level metrics (nRMSE / SSIM / LPIPS) are computed on the **full volume without a brain mask** for a consistent evaluation scope.
+**Normalization**: Both predictions and targets are in `[0, 1]`. Ground truth volumes are pre-normalized; model outputs are mapped via `tanh*0.5+0.5`. All voxel-level metrics (nRMSE / SSIM / LPIPS) are computed on the **full volume without a brain mask** for a consistent evaluation scope.
 
-**SynthSeg resampling**: SynthSeg 2.0 internally resamples volumes to 1mm isotropic resolution before segmentation. Input volumes at 0.5mm (364x436x364) produce segmentation maps at 1mm (182x218x182). Dice and volume consistency are computed in the segmentation's 1mm space. This does not affect metric comparisons since both prediction and target segmentations are in the same space.
+**SynthSeg resampling** (Task 1 / 2 only): SynthSeg 2.0 internally resamples volumes to 1mm isotropic resolution before segmentation. Input volumes at 0.5mm (364x436x364) produce segmentation maps at 1mm (182x218x182). Dice and volume consistency are computed in the segmentation's 1mm space. This does not affect metric comparisons since both prediction and target segmentations are in the same space.
 
-**Ranking**: Per-metric rank -> sum of ranks across 5 metrics -> lowest total = best.
+**Ranking**: Per-metric rank summed across the applicable metrics — **5 metrics for Task 1 / Task 2**, **3 metrics for Task 3** (nRMSE / SSIM / LPIPS only). Lowest total = best.
 
 ## Dependencies
 

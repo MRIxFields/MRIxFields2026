@@ -58,17 +58,11 @@ def visualize_case(input_vol, pred_vol, target_vol, subject_id, output_path, n_s
     titles = ["Input (0.1T)", "Prediction", "Target (7T)"]
     volumes = [input_vol, pred_vol, target_vol]
 
-    # Per-column normalization: each volume uses its own p99.5 for display
-    vmaxes = []
-    for vol in volumes:
-        nz = vol[vol > 0]
-        vmaxes.append(np.percentile(nz, 99.5) if len(nz) > 0 else 1.0)
-
     for row, s_idx in enumerate(slice_indices):
         for col, (vol, title) in enumerate(zip(volumes, titles)):
             ax = axes[row, col]
             slc = vol[:, :, s_idx].T
-            ax.imshow(slc, cmap="gray", origin="lower", vmin=0, vmax=vmaxes[col])
+            ax.imshow(slc, cmap="gray", origin="lower", vmin=0, vmax=1)
             if row == 0:
                 ax.set_title(title, fontsize=14, fontweight="bold")
             ax.set_ylabel(f"slice {s_idx}", fontsize=10)

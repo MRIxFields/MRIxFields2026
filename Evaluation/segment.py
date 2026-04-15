@@ -1,8 +1,9 @@
 """SynthSeg brain segmentation for MRIxFields2026 challenge.
 
 Runs SynthSeg 2.0 on NIfTI files to produce segmentation maps.
-This is a required step — participants must submit both generated
-images and their SynthSeg segmentations.
+Required for Task 1 / Task 2 if you want Dice / Volume metrics
+(participants submit segmentations alongside generated images).
+Task 3 is voxel-level only and does NOT require this step.
 
 Usage:
     # Segment all predictions

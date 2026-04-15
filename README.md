@@ -68,6 +68,17 @@ Perform any-to-any field translation using a single unified model with explicit 
 
 Teams may participate in any or all tasks independently.
 
+**Additional Constraints for Task3**
+
+Task 3 requires a single jointly trained, parameter-sharing conditional model that supports all source-to-target field transformations within one unified architecture.
+Methods that decompose Task 3 into field-specific, target-specific, or source-target-pair-specific dedicated subnetworks/models selected by a router are NOT allowed, even if they are packaged as a single checkpoint.
+Mixture-of-Experts (MoE) style modules are allowed only when they are part of a single end-to-end model with substantial sharing and are not dedicated exclusively to fixed field strengths, contrasts, or translation pairs.
+The submission must NOT be functionally equivalent to an ensemble of specialized models for fixed field or translation pairs.
+
+The organizers reserve the right to request additional method details and to make the final determination on whether a submission is consistent with the spirit and requirements of Task 3.
+
+
+
 <p align="center">
   <img src="assets/fig_task.png" alt="MRIxFields2026 Tasks Overview" width="600">
 </p>
@@ -83,7 +94,8 @@ Teams may participate in any or all tasks independently.
 | Field Strengths | 0.1T, 1.5T, 3T, 5T, 7T |
 | Modalities | T1W, T2W, T2FLAIR |
 | Anatomy | Whole brain |
-| Format | NIfTI (.nii.gz), 364x436x364, MNI space |
+| Format | NIfTI (.nii.gz), 364x436x364, 0.5 mm isotropic, MNI space, float32 |
+| Intensity | Volumes are pre-normalized to [0, 1]; no intensity rescaling is applied during training or evaluation |
 | Training (unpaired) | `Training_retrospective` — different subjects per field strength |
 | Training (paired) | `Training_prospective` — travelling volunteers scanned at all fields |
 | Validation | `Validating_prospective` — paired travelling volunteers |
@@ -170,7 +182,9 @@ vim .env  # Edit paths below
 | `SYNTHSEG_DIR` | SynthSeg installation (for evaluation) |
 | `DEVICE` | GPU device (e.g. `cuda:0`) |
 
-#### SynthSeg (for Dice/Volume metrics)
+#### SynthSeg (for Dice/Volume metrics — Task 1 / Task 2 only)
+
+Skip this section if you are only participating in Task 3.
 
 ```bash
 git clone https://github.com/BBillot/SynthSeg.git /path/to/SynthSeg
@@ -195,17 +209,17 @@ See [Tutorial/](Tutorial/) for step-by-step Jupyter notebooks.
 
 ### 5. Evaluate Your Results
 
-All three tasks are evaluated using five complementary metrics:
+Evaluation metrics are scoped per task. **Task 3 uses voxel-level metrics only — no segmentation submission is required.**
 
-| Metric | Description | Direction |
-|--------|-------------|-----------|
-| **nRMSE** | Normalized Root Mean Square Error | Lower is better |
-| **SSIM** | Structural Similarity Index | Higher is better |
-| **LPIPS** | Learned Perceptual Image Patch Similarity | Lower is better |
-| **Dice** | Overlap on 14 deep gray matter structures (via SynthSeg) | Higher is better |
-| **Volume** | Normalized volume consistency per structure | Higher is better |
+| Metric | Description | Direction | Applies to |
+|--------|-------------|-----------|------------|
+| **nRMSE** | Normalized Root Mean Square Error | Lower is better | Task 1 / 2 / 3 |
+| **SSIM** | Structural Similarity Index | Higher is better | Task 1 / 2 / 3 |
+| **LPIPS** | Learned Perceptual Image Patch Similarity | Lower is better | Task 1 / 2 / 3 |
+| **Dice** | Overlap on 14 deep gray matter structures (via SynthSeg) | Higher is better | Task 1 / 2 |
+| **Volume** | Normalized volume consistency per structure | Higher is better | Task 1 / 2 |
 
-**Ranking**: Sum of per-metric ranks across all 5 metrics. Lowest total wins.
+**Ranking**: Per-metric rank summed across the applicable metrics — **5 metrics for Task 1/2**, **3 metrics for Task 3**. Lowest total wins.
 
 Top-ranked submissions undergo blinded visual inspection by experienced neuroradiologists.
 
@@ -238,7 +252,7 @@ MRIxFields2026/
 │   └── 03_evaluation.ipynb
 ├── Evaluation/                      # Evaluation scripts
 │   ├── segment.py                   #   SynthSeg segmentation
-│   ├── evaluate.py                  #   Compute all 5 metrics
+│   ├── evaluate.py                  #   Compute metrics (5 for Task 1/2, 3 for Task 3)
 │   └── README.md                    #   Evaluation guide + SynthSeg setup
 ├── Submission/                      # Submission guidelines
 │   └── README.md                    #   Format specification
