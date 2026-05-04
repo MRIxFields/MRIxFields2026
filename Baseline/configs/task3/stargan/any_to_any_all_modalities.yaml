@@ -1,11 +1,11 @@
 task: 3
-task_name: task3_any_to_any_T2W
+task_name: task3_any_to_any_multimodal
 method: stargan_v2
 model:
   img_size: 512
   style_dim: 64
   latent_dim: 16
-  num_domains: 5
+  num_domains: 15
   max_conv_dim: 512
   input_nc: 1
 domains:
@@ -16,7 +16,9 @@ domains:
 - 7T
 data:
   modalities:
+  - T1W
   - T2W
+  - T2FLAIR
   crop_size:
   - 512
   - 512
@@ -26,6 +28,7 @@ pretrain:
   batch_size: 8
   num_workers: 4
   total_iters: 200000
+  lr_decay_start: 200000
   lr: 0.0001
   f_lr: 1.0e-06
   beta1: 0.0
@@ -35,7 +38,7 @@ pretrain:
   lambda_sty: 1.0
   lambda_ds: 1.0
   lambda_cyc: 1.0
-  ds_iter: 100000
+  ds_iter: 250000
   ema_beta: 0.999
   save_every: 10000
   print_every: 1000
@@ -48,6 +51,7 @@ finetune:
   beta2: 0.999
   epochs: 50
   save_every: 10
+  pretrain_step: 200000
   loss_l1: 1.0
   loss_lpips: 0.1
   loss_ssim: 0.0
