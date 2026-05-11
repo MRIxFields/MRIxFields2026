@@ -77,7 +77,18 @@ def _extract_generator_state(state_dict: dict) -> dict:
 
 
 def load_generator(cfg: dict, checkpoint_path: str, device: torch.device):
-    """Load generator from checkpoint based on method type."""
+    """Load a generator from a training checkpoint.
+
+    Dispatches on ``cfg['method']``:
+    - ``cut`` / ``cyclegan`` / ``hybrid``: build a ``ResnetGenerator`` and
+      load weights via ``_extract_generator_state`` (handles the ``netG_A``,
+      ``netG``, ``generator``, and plain state-dict layouts).
+    - ``stargan_v2``: build the full StarGAN v2 net set and load the EMA
+      generator and EMA mapping network.
+
+    Returns ``(model, model_type)`` where ``model_type`` is ``'resnet'`` or
+    ``'stargan_v2'`` — used by ``predict_volume`` to dispatch the forward call.
+    """
     method = cfg["method"]
     model_cfg = cfg["model"]
 
@@ -196,6 +207,15 @@ def predict_volume(
 
 
 def main():
+    """Run inference on every NIfTI in ``--input_dir``.
+
+    For each input volume: load it in canonical (RAS+) orientation, run the
+    generator slice-by-slice along ``slice_axis``, map outputs back to the
+    input's original orientation, mask the (skull-stripped) background using
+    the input as a brain mask, and save under ``--output_dir`` preserving the
+    relative path. Defaults for ``--output_dir`` / ``--device`` come from
+    ``$INFERENCE_DIR`` / ``$DEVICE`` in ``.env``.
+    """
     parser = argparse.ArgumentParser(description="MRIxFields2026 Inference")
     parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--checkpoint", type=str, required=True)
@@ -207,7 +227,8 @@ def main():
                         help="Target domain index (StarGAN v2 only)")
     parser.add_argument("--target_field", type=str, default=None,
                         help="Target field strength name, e.g. '7T' (auto-converts to domain idx)")
-    parser.add_argument("--device", type=str, default=None)
+    parser.add_argument("--device", type=str, default=None,
+                        help="Torch device, e.g. 'cuda', 'cuda:0' (default: DEVICE from .env; falls back to cpu when CUDA is unavailable)")
     args = parser.parse_args()
 
     if args.output_dir is None:
@@ -263,9 +284,15 @@ def main():
         transform = nib.orientations.ornt_transform(canonical_ornt, original_ornt)
         pred = nib.orientations.apply_orientation(pred, transform)
 
+        # Restore brain mask from input. pack1_mask inputs are skull-stripped,
+        # but ResnetGenerator/StarGAN-v2 tanh+bias leaks small nonzero values
+        # outside the brain — see analysis/README.md.
+        src_arr = original_img.get_fdata(dtype=np.float32)
+        pred = pred * (src_arr > 1e-6).astype(pred.dtype)
+
         rel_path = nifti_path.relative_to(input_dir)
         out_path = output_dir / rel_path
-        save_nifti(pred, original_affine, out_path)
+        save_nifti(pred, original_affine, out_path, header=original_img.header)
 
     print(f"Inference complete. Results saved to: {output_dir}")
     print(f"\nNext step: run SynthSeg segmentation")

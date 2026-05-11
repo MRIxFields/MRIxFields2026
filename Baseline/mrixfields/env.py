@@ -98,6 +98,30 @@ def get_inference_dir() -> str:
     return _resolve_path(val)
 
 
+def get_predictions_seg_dir() -> str:
+    """Get PREDICTIONS_SEG_DIR from environment."""
+    load_env()
+    val = os.environ.get("PREDICTIONS_SEG_DIR")
+    if not val:
+        raise RuntimeError(
+            "PREDICTIONS_SEG_DIR is not set. Configure it in .env (repo root) "
+            "or set the environment variable. See .env.example."
+        )
+    return _resolve_path(val)
+
+
+def get_submission_dir() -> str:
+    """Get SUBMISSION_DIR from environment."""
+    load_env()
+    val = os.environ.get("SUBMISSION_DIR")
+    if not val:
+        raise RuntimeError(
+            "SUBMISSION_DIR is not set. Configure it in .env (repo root) "
+            "or set the environment variable. See .env.example."
+        )
+    return _resolve_path(val)
+
+
 def get_synthseg_dir() -> str:
     """Get SYNTHSEG_DIR from environment."""
     load_env()

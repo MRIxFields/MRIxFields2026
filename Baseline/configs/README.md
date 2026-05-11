@@ -48,6 +48,14 @@ configs/
 
 Each config contains both `pretrain` and `finetune` sections. Use `--mode retro_scratch/pro_scratch/pro_pretrained` at training time to select which steps to run.
 
+The mode name encodes data split × init source:
+
+| Mode | Data | Init | What it does |
+|------|------|------|--------------|
+| `retro_scratch` | **Retro**spective (unpaired) | **Scratch** | Pretrain only — unpaired training on `Training_retrospective/`. Output is reusable as the starting checkpoint for multiple `pro_pretrained` runs. |
+| `pro_scratch` | **Pro**spective (paired) | **Scratch** | Supervised paired training on `Training_prospective/` from random init. Ablation-only. |
+| `pro_pretrained` | **Pro**spective (paired) | **Pretrained** | Supervised paired fine-tune on `Training_prospective/`, starting from a `retro_scratch` checkpoint. Full pipeline; **recommended**. |
+
 Top-level keys:
 
 | Key | Description |

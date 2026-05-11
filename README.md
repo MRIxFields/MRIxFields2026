@@ -229,11 +229,14 @@ See [Evaluation/](Evaluation/) for local evaluation scripts and SynthSeg setup.
 
 ### 6. Submit
 
-Submit **one zip per task** (`task1.zip` / `task2.zip` / `task3.zip`) via [Synapse](https://www.synapse.org/Synapse:syn72060672). Each zip's internal layout is `{modality}/{pair}/{pred|seg}/<file>.nii.gz`.
+Submit **one zip per task** (`task1.zip` / `task2.zip` / `task3.zip`) via [Synapse](https://www.synapse.org/Synapse:syn72060672). From inference output to upload:
 
-See [Submission/](Submission/) for:
-- Per-task zip layout and file naming rules
-- Packaging commands and starter template
+1. **Segment** *(Task 1/2 only; Task 3 skip)* — run [Baseline/scripts/segment_predictions.py](Baseline/scripts/segment_predictions.py) to write SynthSeg outputs to `$PREDICTIONS_SEG_DIR/` (sibling of `$INFERENCE_DIR/`). Required for Dice / Volume.
+2. **Pack** — run [Submission/build_submission/](Submission/build_submission/) to repack `$INFERENCE_DIR/` and `$PREDICTIONS_SEG_DIR/` into the per-task tree under `$SUBMISSION_DIR/` (renames source field tags to target, reorganizes `pred/` and `seg/`).
+3. **Zip** — `cd $SUBMISSION_DIR/task{N}` then `zip -r ~/task{N}.zip T1W T2W T2FLAIR`.
+4. **Upload** the three zips to Synapse.
+
+See [Submission/README.md](Submission/README.md) for the submission format and the build/zip steps.
 
 ---
 

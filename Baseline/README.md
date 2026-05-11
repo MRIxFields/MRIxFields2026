@@ -10,6 +10,8 @@ Baseline implementations for cross-field brain MRI translation.
 | **CycleGAN** | Zhu et al., ICCV 2017 | Task 1, 2 | Dual G+D, cycle consistency loss |
 | **StarGAN v2** | Choi et al., CVPR 2020 | Task 3 | Multi-domain with AdaIN style injection |
 
+Pre-trained checkpoints (all 147 task × method × mode combinations) are available on Hugging Face: [`mrixfields/MRIxFields2026-Baseline`](https://huggingface.co/mrixfields/MRIxFields2026-Baseline).
+
 ## Prerequisites
 
 ### Install Dependencies
@@ -43,6 +45,8 @@ vim .env  # Edit paths below
 Python scripts auto-load `.env` via `mrixfields.env.load_env()`. For shell commands using `$DATA_DIR` etc., run `source .env` first.
 
 ## Quick Start
+
+> The Step 1–5 below are the **local Baseline pipeline** (preprocess → train → inference → segmentation → local evaluation). They are distinct from the top-level [README § 6](../README.md#6-submit) submission sub-steps (segment → pack → zip → upload), which describe what to do *after* this pipeline to assemble the Synapse upload.
 
 ### Step 1: Preprocess
 
@@ -98,11 +102,33 @@ python scripts/inference.py \
     --target_field 7T
 ```
 
+> Inference output goes into `$INFERENCE_DIR/` with **source** field tags (e.g. `P_T1W_0.1T_0001.nii.gz`). Synapse expects target field tags in a per-task tree — repack with [Submission/build_submission/](../Submission/build_submission/) before zipping. Do not `zip -r` `$INFERENCE_DIR/` directly.
+
 ### Step 4: Segmentation (SynthSeg) — Task 1 / Task 2 only
 
-Run SynthSeg segmentation on both your predictions and the ground truth target volumes. This step is required for the Dice and Volume metrics, which apply to **Task 1 / Task 2 only**. **Skip this step entirely for Task 3** — Task 3 is evaluated on voxel-level metrics only and does not accept segmentation submissions.
+Run SynthSeg on your predictions to produce segmentation maps for the
+Dice and Volume metrics. **Skip this step entirely for Task 3** — Task 3 is
+voxel-level only and does not accept segmentation submissions.
 
-See [Evaluation/README.md](../Evaluation/README.md) for segmentation commands and SynthSeg setup.
+`scripts/segment_predictions.py` mirrors `$INFERENCE_DIR/` into
+`$PREDICTIONS_SEG_DIR/` (sibling tree of seg NIfTI files), using the same
+sweep coordinates as [`Submission/build_submission/`](../Submission/build_submission/):
+
+```bash
+# Default: task1 + task2 with build_submission's defaults
+python scripts/segment_predictions.py
+
+# Single task / dry-run / force re-segment — see --help for full options
+python scripts/segment_predictions.py --tasks task1
+python scripts/segment_predictions.py --dry-run
+python scripts/segment_predictions.py --overwrite
+```
+
+SynthSeg loads once (~30 s), then ~30–60 s per file. 72 files total ≈
+30–60 min on GPU. Existing seg outputs are skipped; pass `--overwrite` to
+force re-segmentation.
+
+For SynthSeg installation, see [Evaluation/README.md](../Evaluation/README.md). For a generic single-directory wrapper, use [Evaluation/segment.py](../Evaluation/segment.py).
 
 ### Step 5: Evaluation
 
@@ -112,6 +138,8 @@ Evaluate your predictions against ground truth:
 - **Task 3**: 3 metrics — nRMSE, SSIM, LPIPS only (no segmentations).
 
 See [Evaluation/README.md](../Evaluation/README.md) for evaluation commands and metric details.
+
+Local evaluation is an optional pre-submission sanity check — it's not required by the Synapse evaluator, which scores submissions independently after upload.
 
 ## Training Modes
 
@@ -166,3 +194,30 @@ Format: `{source}_to_{target}_{modality}.yaml`
 - Modalities: `T1W`, `T2W`, `T2FLAIR`
 
 See [configs/README.md](configs/README.md) for details.
+
+## Citation
+
+If you use these baselines, please cite the original method papers:
+
+```bibtex
+@inproceedings{park2020cut,
+  title={Contrastive Learning for Unpaired Image-to-Image Translation},
+  author={Taesung Park and Alexei A. Efros and Richard Zhang and Jun-Yan Zhu},
+  booktitle={European Conference on Computer Vision (ECCV)},
+  year={2020}
+}
+
+@inproceedings{CycleGAN2017,
+  title={Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks},
+  author={Zhu, Jun-Yan and Park, Taesung and Isola, Phillip and Efros, Alexei A},
+  booktitle={IEEE International Conference on Computer Vision (ICCV)},
+  year={2017}
+}
+
+@inproceedings{choi2020starganv2,
+  title={StarGAN v2: Diverse Image Synthesis for Multiple Domains},
+  author={Yunjey Choi and Youngjung Uh and Jaejun Yoo and Jung-Woo Ha},
+  booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2020}
+}
+```
